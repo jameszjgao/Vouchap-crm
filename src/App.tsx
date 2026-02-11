@@ -1,8 +1,8 @@
-import { useState, useEffect, Suspense, lazy } from 'react';
+import { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { getCurrentOpsUser, signOut, OpsUser } from './lib/ops-auth';
-import { getMyMenuPermissions, getDefaultMenuPermissions, MENU_KEYS, type MenuKey } from './lib/menu-permissions';
+import { getMyMenuPermissions, getDefaultMenuPermissions, MENU_KEYS, CRM_REFRESH_MENU_EVENT, type MenuKey } from './lib/menu-permissions';
 import { MenuPermissionsProvider } from './lib/menu-context';
 import './App.css';
 
@@ -35,6 +35,19 @@ function App() {
   const [opsUser, setOpsUser] = useState<OpsUser | null>(null);
   const [menuAllowed, setMenuAllowed] = useState<Set<MenuKey>>(new Set());
   const [loading, setLoading] = useState(true);
+  const opsUserRef = useRef<OpsUser | null>(null);
+  opsUserRef.current = opsUser;
+
+  useEffect(() => {
+    const onRefreshMenu = () => {
+      const user = opsUserRef.current;
+      if (user?.role) {
+        getMyMenuPermissions(user.role).then((set) => setMenuAllowed(set));
+      }
+    };
+    window.addEventListener(CRM_REFRESH_MENU_EVENT, onRefreshMenu);
+    return () => window.removeEventListener(CRM_REFRESH_MENU_EVENT, onRefreshMenu);
+  }, []);
 
   useEffect(() => {
     let mounted = true;

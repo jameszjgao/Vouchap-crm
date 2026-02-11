@@ -59,10 +59,14 @@ export default function Leads({ opsUser, view }: LeadsProps) {
   const [selectedOpsUserId, setSelectedOpsUserId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
-  const [filterCreator, setFilterCreator] = useState('');
+  const [searchName, setSearchName] = useState('');
+  const [searchCreatorEmail, setSearchCreatorEmail] = useState('');
   const [filterMemberMin, setFilterMemberMin] = useState('');
   const [filterMemberMax, setFilterMemberMax] = useState('');
   const [filterSku, setFilterSku] = useState('');
+  const [filterOpsUserId, setFilterOpsUserId] = useState('');
+  const [filterCreatedStart, setFilterCreatedStart] = useState('');
+  const [filterCreatedEnd, setFilterCreatedEnd] = useState('');
 
   const isAll = view === 'all';
   const assignmentBySpaceId = useMemo(() => {
@@ -115,10 +119,15 @@ export default function Leads({ opsUser, view }: LeadsProps) {
 
   const filteredSpaces = useMemo(() => {
     return spaces.filter((s) => {
+      // 搜索：客户名称、创建人邮箱均不区分大小写
+      if (searchName.trim()) {
+        const name = (s.name ?? '').toLowerCase();
+        if (!name.includes(searchName.trim().toLowerCase())) return false;
+      }
       const creatorUserId = adminUserIdBySpaceId[s.id];
       const creator = creatorUserId ? creatorById[creatorUserId] : null;
-      const creatorLabel = creator ? (creator.name || creator.email || '') : '';
-      if (filterCreator && !creatorLabel.toLowerCase().includes(filterCreator.toLowerCase())) return false;
+      const creatorEmail = creator?.email ?? '';
+      if (searchCreatorEmail.trim() && !creatorEmail.toLowerCase().includes(searchCreatorEmail.trim().toLowerCase())) return false;
       const members = memberCountBySpaceId[s.id] ?? 0;
       const min = filterMemberMin !== '' ? Number(filterMemberMin) : null;
       const max = filterMemberMax !== '' ? Number(filterMemberMax) : null;
@@ -126,9 +135,21 @@ export default function Leads({ opsUser, view }: LeadsProps) {
       if (max != null && members > max) return false;
       const sku = currentSkuBySpaceId[s.id] ?? '–';
       if (filterSku && sku !== filterSku) return false;
+      if (filterOpsUserId) {
+        const a = assignmentBySpaceId[s.id];
+        if (a?.ops_user_id !== filterOpsUserId) return false;
+      }
+      if (filterCreatedStart) {
+        const start = new Date(filterCreatedStart + 'T00:00:00').getTime();
+        if (new Date(s.created_at).getTime() < start) return false;
+      }
+      if (filterCreatedEnd) {
+        const end = new Date(filterCreatedEnd + 'T23:59:59.999').getTime();
+        if (new Date(s.created_at).getTime() > end) return false;
+      }
       return true;
     });
-  }, [spaces, filterCreator, filterMemberMin, filterMemberMax, filterSku, creatorById, memberCountBySpaceId, currentSkuBySpaceId, adminUserIdBySpaceId]);
+  }, [spaces, searchName, searchCreatorEmail, filterMemberMin, filterMemberMax, filterSku, filterOpsUserId, filterCreatedStart, filterCreatedEnd, creatorById, memberCountBySpaceId, currentSkuBySpaceId, adminUserIdBySpaceId, assignmentBySpaceId]);
 
   useEffect(() => {
     load();
@@ -219,49 +240,100 @@ export default function Leads({ opsUser, view }: LeadsProps) {
       <div className="page-card">
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', color: '#64748b' }}>
           {isAll ? '全部客户列表，可分配负责人。' : '仅展示分配给我的客户。'}
-          {isAll && ' 可为每个客户分配运营负责人。'}
+          {isAll && ' 支持按条件搜索与筛选，结果中可对客户进行改派。'}
         </p>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.875rem', color: '#64748b' }}>筛选：</span>
-          <input
-            type="text"
-            placeholder="创建者姓名/邮箱"
-            value={filterCreator}
-            onChange={(e) => setFilterCreator(e.target.value)}
-            style={{ width: 160, padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
-          />
-          <input
-            type="number"
-            placeholder="人数≥"
-            min={0}
-            value={filterMemberMin}
-            onChange={(e) => setFilterMemberMin(e.target.value)}
-            style={{ width: 72, padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
-          />
-          <input
-            type="number"
-            placeholder="人数≤"
-            min={0}
-            value={filterMemberMax}
-            onChange={(e) => setFilterMemberMax(e.target.value)}
-            style={{ width: 72, padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
-          />
-          <select
-            value={filterSku}
-            onChange={(e) => setFilterSku(e.target.value)}
-            style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem', minWidth: 120 }}
-          >
-            <option value="">全部规格</option>
-            {distinctSkuNames.map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-          {(filterCreator || filterMemberMin !== '' || filterMemberMax !== '' || filterSku) && (
-            <button type="button" className="btn btn-secondary btn-small" onClick={() => { setFilterCreator(''); setFilterMemberMin(''); setFilterMemberMax(''); setFilterSku(''); }}>
-              清空
-            </button>
-          )}
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}>搜索：</span>
+            <input
+              type="text"
+              placeholder="客户名称"
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              style={{ width: 160, padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
+            />
+            <input
+              type="text"
+              placeholder="创建人邮箱"
+              value={searchCreatorEmail}
+              onChange={(e) => setSearchCreatorEmail(e.target.value)}
+              style={{ width: 180, padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}>筛选：</span>
+            <input
+              type="number"
+              placeholder="人数≥"
+              min={0}
+              value={filterMemberMin}
+              onChange={(e) => setFilterMemberMin(e.target.value)}
+              style={{ width: 72, padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
+            />
+            <input
+              type="number"
+              placeholder="人数≤"
+              min={0}
+              value={filterMemberMax}
+              onChange={(e) => setFilterMemberMax(e.target.value)}
+              style={{ width: 72, padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
+            />
+            <select
+              value={filterSku}
+              onChange={(e) => setFilterSku(e.target.value)}
+              style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem', minWidth: 120 }}
+            >
+              <option value="">全部规格</option>
+              {distinctSkuNames.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+            {isAll && (
+              <select
+                value={filterOpsUserId}
+                onChange={(e) => setFilterOpsUserId(e.target.value)}
+                style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem', minWidth: 140 }}
+              >
+                <option value="">运营负责人</option>
+                {opsUsers.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name || u.email} ({u.role})</option>
+                ))}
+              </select>
+            )}
+            <input
+              type="date"
+              placeholder="创建时间起"
+              value={filterCreatedStart}
+              onChange={(e) => setFilterCreatedStart(e.target.value)}
+              style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
+            />
+            <input
+              type="date"
+              placeholder="创建时间止"
+              value={filterCreatedEnd}
+              onChange={(e) => setFilterCreatedEnd(e.target.value)}
+              style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.875rem' }}
+            />
+            {(searchName || searchCreatorEmail || filterMemberMin !== '' || filterMemberMax !== '' || filterSku || filterOpsUserId || filterCreatedStart || filterCreatedEnd) && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-small"
+                onClick={() => {
+                  setSearchName('');
+                  setSearchCreatorEmail('');
+                  setFilterMemberMin('');
+                  setFilterMemberMax('');
+                  setFilterSku('');
+                  setFilterOpsUserId('');
+                  setFilterCreatedStart('');
+                  setFilterCreatedEnd('');
+                }}
+              >
+                清空
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="table-wrap">
@@ -271,25 +343,24 @@ export default function Leads({ opsUser, view }: LeadsProps) {
             <table>
               <thead>
                 <tr>
-                  <th>客户名称</th>
+                  <th>客户</th>
                   <th>创建者</th>
                   <th>人数</th>
-                  <th>当前订单规格</th>
-                  <th>负责人</th>
-                  <th>分配时间</th>
+                  <th>当前规格</th>
                   <th>创建时间</th>
+                  <th>运营</th>
                   {isAll && <th>操作</th>}
                 </tr>
               </thead>
               <tbody>
                 {filteredSpaces.length === 0 && !loading ? (
-                  <tr><td colSpan={isAll ? 8 : 7} style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>暂无客户数据</td></tr>
+                  <tr><td colSpan={isAll ? 7 : 6} style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>暂无客户数据</td></tr>
                 ) : (
                   filteredSpaces.map((row) => {
                     const a = assignmentBySpaceId[row.id];
                     const creatorUserId = adminUserIdBySpaceId[row.id];
                     const creator = creatorUserId ? creatorById[creatorUserId] : null;
-                    const creatorLabel = creator ? (creator.name || creator.email || '–') : '–';
+                    const creatorEmail = creator?.email ?? '–';
                     const members = memberCountBySpaceId[row.id] ?? 0;
                     const sku = currentSkuBySpaceId[row.id] ?? '–';
                     return (
@@ -299,12 +370,11 @@ export default function Leads({ opsUser, view }: LeadsProps) {
                         onClick={() => setSelectedSpaceId(row.id)}
                       >
                         <td>{row.name || '–'}</td>
-                        <td>{creatorLabel}</td>
+                        <td>{creatorEmail}</td>
                         <td>{members}</td>
                         <td>{sku}</td>
-                        <td>{a?.ops_users ? (a.ops_users.name || a.ops_users.email) : '–'}</td>
-                        <td>{a ? format(new Date(a.assigned_at), 'yyyy-MM-dd HH:mm') : '–'}</td>
                         <td>{format(new Date(row.created_at), 'yyyy-MM-dd HH:mm')}</td>
+                        <td>{a?.ops_users ? (a.ops_users.name || a.ops_users.email) : '–'}</td>
                         {isAll && (
                           <td onClick={(e) => e.stopPropagation()}>
                             <button
@@ -476,8 +546,7 @@ function CustomerDetail({
             <section style={{ marginBottom: '1.25rem' }}>
               <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>创建者</h4>
               <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                {creator ? (creator.email ?? creator.name ?? '–') : '–'}
-                {creator?.name && creator.email && ` (${creator.name})`}
+                {creator?.email ?? '–'}
               </p>
             </section>
 
