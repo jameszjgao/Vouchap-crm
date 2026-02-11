@@ -40,6 +40,24 @@ npm install
 npm run dev
 ```
 
+## Vercel 发布
+
+1. **推送代码**：确保 `vouchap-crm` 已提交并推送到 Git（GitHub / GitLab / Bitbucket）。
+
+2. **导入项目**：
+   - 打开 [vercel.com](https://vercel.com) → 登录 → **Add New** → **Project**
+   - 选择存放 `vouchap-crm` 的仓库；若 CRM 与主应用在同一仓库的子目录，选该仓库后在 **Root Directory** 中填 `vouchap-crm`（或 CRM 所在子目录）
+
+3. **环境变量**：在 Vercel 项目 **Settings → Environment Variables** 中添加：
+   - `VITE_SUPABASE_URL`：Supabase 项目 URL（与主应用一致）
+   - `VITE_SUPABASE_ANON_KEY`：Supabase 的 anon public key（与主应用一致）
+
+4. **构建**：无需改配置；项目根目录已有 `vercel.json`，使用 `npm run build`，输出目录为 `dist`，并已配置 SPA 路由回退到 `index.html`。
+
+5. **部署**：点击 **Deploy**；完成后会得到例如 `https://xxx.vercel.app` 的地址，即 CRM 访问地址。
+
+**说明**：若仓库根目录不是 CRM（例如是 monorepo），必须在导入时设置 **Root Directory** 为 CRM 所在目录（如 `vouchap-crm`），否则构建会失败。
+
 CRM 开发服务默认使用 **5174** 端口（若 5173 已被 vouchap-web 占用）。请打开 **http://localhost:5174** 访问运营管理，不要与平台的 http://localhost:5173 混淆。
 
 ## 主应用如何用权益

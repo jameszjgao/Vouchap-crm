@@ -5,3 +5,4 @@ dist
 *.local
 supabase/.temp
 test_permission
+.vercel

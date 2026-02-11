@@ -167,12 +167,12 @@ export default function Leads({ opsUser, view }: LeadsProps) {
         supabase.from('user_spaces').select('space_id, user_id, is_admin'),
       ]);
 
-      const allAssignments = (assignmentsRes.data ?? []) as AssignmentRow[];
+      const allAssignments = (assignmentsRes.data ?? []) as unknown as AssignmentRow[];
       if (!assignmentsRes.error) setAssignments(allAssignments);
       if (view === 'all' && usersRes && !(usersRes as { error: unknown }).error)
         setOpsUsers(((usersRes as { data: OpsUser[] }).data ?? []).map((u) => ({ ...u, created_at: String(u.created_at), updated_at: String((u as { updated_at?: unknown }).updated_at ?? '') })));
 
-      if (!ordersRes.error) setOrders((ordersRes.data ?? []) as OrderRow[]);
+      if (!ordersRes.error) setOrders((ordersRes.data ?? []) as unknown as OrderRow[]);
 
       if (!usRes.error) {
         const rows = (usRes.data ?? []) as { space_id: string; user_id: string; is_admin: boolean }[];
@@ -521,8 +521,8 @@ function CustomerDetail({
         supabase.schema('crm').from('space_follow_ups').select('id, space_id, ops_user_id, content, created_at, ops_users(name, email)').eq('space_id', spaceId).order('created_at', { ascending: false }),
         supabase.rpc('get_space_data_stats', { p_space_id: spaceId }),
       ]);
-      if (!ordersRes.error) setOrders((ordersRes.data ?? []) as OrderRow[]);
-      if (!followRes.error) setFollowUps((followRes.data ?? []) as FollowUpRow[]);
+      if (!ordersRes.error) setOrders((ordersRes.data ?? []) as unknown as OrderRow[]);
+      if (!followRes.error) setFollowUps((followRes.data ?? []) as unknown as FollowUpRow[]);
       if (!statsRes.error && statsRes.data) {
         const d = statsRes.data as { receipts?: number; invoices?: number; inbound?: number; outbound?: number };
         setDataStats({

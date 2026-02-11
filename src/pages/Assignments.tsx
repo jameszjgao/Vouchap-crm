@@ -52,7 +52,7 @@ export default function Assignments({ opsUser }: AssignmentsProps) {
         isAdmin ? supabase.schema('crm').from('ops_users').select('id, user_id, email, name, role, created_at, updated_at').order('email') : Promise.resolve({ data: [] as OpsUser[], error: null }),
       ]);
       if (!assignmentsRes.error) {
-        const raw = (assignmentsRes.data ?? []) as AssignmentRow[];
+        const raw = (assignmentsRes.data ?? []) as unknown as AssignmentRow[];
         setList(isAdmin ? raw : raw.filter((a) => a.ops_user_id === opsUser?.id));
       }
       if (!spacesRes.error) setSpaces(spacesRes.data ?? []);

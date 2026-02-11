@@ -81,7 +81,7 @@ export default function SpaceOrders({ opsUser, view }: SpaceOrdersProps) {
         ]);
         const err = ordersRes.error || spacesRes.error || skusRes.error;
         if (err) setError(err.message || '请求失败');
-        if (!ordersRes.error) setList(ordersRes.data ?? []);
+        if (!ordersRes.error) setList((ordersRes.data ?? []) as unknown as OrderRow[]);
         if (!spacesRes.error) setSpaces(spacesRes.data ?? []);
         if (!skusRes.error) setSkus(skusRes.data ?? []);
         setMySpaceIds(new Set());
@@ -101,7 +101,7 @@ export default function SpaceOrders({ opsUser, view }: SpaceOrdersProps) {
         const ids = new Set(((assignmentsRes.data ?? []) as { space_id: string }[]).map((a) => a.space_id));
         setMySpaceIds(ids);
         if (!ordersRes.error) {
-          const allOrders = (ordersRes.data ?? []) as OrderRow[];
+          const allOrders = (ordersRes.data ?? []) as unknown as OrderRow[];
           setList(allOrders.filter((o) => ids.has(o.space_id)));
         }
         if (!spacesRes.error) setSpaces(spacesRes.data ?? []);
