@@ -67,6 +67,7 @@ export default function Leads({ opsUser, view }: LeadsProps) {
   const [filterOpsUserId, setFilterOpsUserId] = useState('');
   const [filterCreatedStart, setFilterCreatedStart] = useState('');
   const [filterCreatedEnd, setFilterCreatedEnd] = useState('');
+  const [dataTotalBySpaceId, setDataTotalBySpaceId] = useState<Record<string, number>>({});
 
   const isAll = view === 'all';
   const assignmentBySpaceId = useMemo(() => {
@@ -194,20 +195,54 @@ export default function Leads({ opsUser, view }: LeadsProps) {
         allSpaces = (spacesRes.data ?? []) as SpaceRow[];
       }
 
+      let finalSpaces: SpaceRow[] = [];
       if (allSpaces.length > 0) {
         if (view === 'all') {
+          finalSpaces = allSpaces;
           setSpaces(allSpaces);
         } else if (opsUser?.id) {
           const mySpaceIds = new Set(allAssignments.filter((a) => a.ops_user_id === opsUser.id).map((a) => a.space_id));
-          setSpaces(allSpaces.filter((s) => mySpaceIds.has(s.id)));
+          finalSpaces = allSpaces.filter((s) => mySpaceIds.has(s.id));
+          setSpaces(finalSpaces);
         } else {
           setSpaces([]);
         }
       } else {
         setSpaces([]);
       }
+
+      if (finalSpaces.length > 0) {
+        const ids = finalSpaces.map((s) => s.id);
+        let bySpace: Record<string, number> = {};
+        const { data: totalsData, error: totalsError } = await supabase.rpc('get_spaces_data_totals', { p_space_ids: ids });
+        if (!totalsError && Array.isArray(totalsData)) {
+          (totalsData as { space_id?: string; total?: number | string }[]).forEach((r) => {
+            const sid = r.space_id ?? (r as Record<string, unknown>).space_id as string | undefined;
+            const t = r.total ?? (r as Record<string, unknown>).total;
+            if (sid != null) bySpace[sid] = Number(t) || 0;
+          });
+        }
+        if (totalsError) console.warn('get_spaces_data_totals 未生效，改用单空间统计:', totalsError.message);
+        if (Object.keys(bySpace).length === 0 && ids.length > 0) {
+          const results = await Promise.all(
+            ids.map((spaceId) =>
+              supabase.rpc('get_space_data_stats', { p_space_id: spaceId }).then((res) => ({ spaceId, data: res.data }))
+            )
+          );
+          results.forEach(({ spaceId, data }) => {
+            if (data && typeof data === 'object' && !Array.isArray(data)) {
+              const d = data as { receipts?: number; invoices?: number; inbound?: number; outbound?: number };
+              bySpace[spaceId] = (Number(d.receipts) || 0) + (Number(d.invoices) || 0) + (Number(d.inbound) || 0) + (Number(d.outbound) || 0);
+            }
+          });
+        }
+        setDataTotalBySpaceId(bySpace);
+      } else {
+        setDataTotalBySpaceId({});
+      }
     } catch {
       setSpaces([]);
+      setDataTotalBySpaceId({});
     } finally {
       setLoading(false);
     }
@@ -346,6 +381,7 @@ export default function Leads({ opsUser, view }: LeadsProps) {
                   <th>客户</th>
                   <th>创建者</th>
                   <th>人数</th>
+                  <th>数据量</th>
                   <th>当前规格</th>
                   <th>创建时间</th>
                   <th>运营</th>
@@ -354,7 +390,7 @@ export default function Leads({ opsUser, view }: LeadsProps) {
               </thead>
               <tbody>
                 {filteredSpaces.length === 0 && !loading ? (
-                  <tr><td colSpan={isAll ? 7 : 6} style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>暂无客户数据</td></tr>
+                  <tr><td colSpan={isAll ? 8 : 7} style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>暂无客户数据</td></tr>
                 ) : (
                   filteredSpaces.map((row) => {
                     const a = assignmentBySpaceId[row.id];
@@ -362,6 +398,7 @@ export default function Leads({ opsUser, view }: LeadsProps) {
                     const creator = creatorUserId ? creatorById[creatorUserId] : null;
                     const creatorEmail = creator?.email ?? '–';
                     const members = memberCountBySpaceId[row.id] ?? 0;
+                    const dataTotal = dataTotalBySpaceId[row.id];
                     const sku = currentSkuBySpaceId[row.id] ?? '–';
                     return (
                       <tr
@@ -372,6 +409,7 @@ export default function Leads({ opsUser, view }: LeadsProps) {
                         <td>{row.name || '–'}</td>
                         <td>{creatorEmail}</td>
                         <td>{members}</td>
+                        <td>{dataTotal != null ? dataTotal.toLocaleString() : '–'}</td>
                         <td>{sku}</td>
                         <td>{format(new Date(row.created_at), 'yyyy-MM-dd HH:mm')}</td>
                         <td>{a?.ops_users ? (a.ops_users.name || a.ops_users.email) : '–'}</td>

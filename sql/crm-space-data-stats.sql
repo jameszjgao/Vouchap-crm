@@ -57,3 +57,65 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.get_space_data_stats(uuid) TO authenticated;
 
+-- ============================================================
+-- 批量按空间统计四类数据总量（收据+发票+入库+出库），供客户列表「数据量」列
+-- ============================================================
+
+DROP FUNCTION IF EXISTS public.get_spaces_data_totals(uuid[]);
+
+CREATE OR REPLACE FUNCTION public.get_spaces_data_totals(p_space_ids uuid[])
+RETURNS TABLE(space_id uuid, total bigint)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  sid uuid;
+  v_receipts bigint;
+  v_invoices bigint;
+  v_inbound  bigint;
+  v_outbound bigint;
+BEGIN
+  IF p_space_ids IS NULL OR array_length(p_space_ids, 1) IS NULL THEN
+    RETURN;
+  END IF;
+
+  FOREACH sid IN ARRAY p_space_ids
+  LOOP
+    v_receipts := 0;
+    v_invoices := 0;
+    v_inbound  := 0;
+    v_outbound := 0;
+
+    BEGIN
+      SELECT COUNT(*) INTO v_receipts FROM receipts WHERE space_id = sid;
+    EXCEPTION WHEN undefined_table THEN
+      NULL;
+    END;
+    BEGIN
+      SELECT COUNT(*) INTO v_invoices FROM invoices WHERE space_id = sid;
+    EXCEPTION WHEN undefined_table THEN
+      NULL;
+    END;
+    BEGIN
+      SELECT COUNT(*) INTO v_inbound FROM inbound WHERE space_id = sid;
+    EXCEPTION WHEN undefined_table THEN
+      NULL;
+    END;
+    BEGIN
+      SELECT COUNT(*) INTO v_outbound FROM outbound WHERE space_id = sid;
+    EXCEPTION WHEN undefined_table THEN
+      NULL;
+    END;
+
+    space_id := sid;
+    total := COALESCE(v_receipts, 0) + COALESCE(v_invoices, 0) + COALESCE(v_inbound, 0) + COALESCE(v_outbound, 0);
+    RETURN NEXT;
+  END LOOP;
+END;
+$$;
+
+COMMENT ON FUNCTION public.get_spaces_data_totals(uuid[]) IS '按空间批量统计：收据+发票+入库+出库 条数之和，供 CRM 客户列表数据量列';
+
+GRANT EXECUTE ON FUNCTION public.get_spaces_data_totals(uuid[]) TO authenticated;
+
