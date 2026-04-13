@@ -51,6 +51,10 @@ export default function SpaceOrders({ opsUser, view }: SpaceOrdersProps) {
   const [newSpaceId, setNewSpaceId] = useState('');
   const [newSkuId, setNewSkuId] = useState('');
   const [newExpiresAt, setNewExpiresAt] = useState('');
+  /** Optional: extra engagement slots (firm) — written to metadata.engagement_addon_slots */
+  const [newEngagementAddonSlots, setNewEngagementAddonSlots] = useState('');
+  /** Optional: grant recognition credits (client) — metadata.recognition_credits_added; trigger updates balance */
+  const [newRecognitionCreditsAdded, setNewRecognitionCreditsAdded] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const isAll = view === 'all';
@@ -118,6 +122,12 @@ export default function SpaceOrders({ opsUser, view }: SpaceOrdersProps) {
     if (!newSpaceId || !newSkuId || !opsUser?.id) return;
     setSubmitting(true);
     try {
+      const metadata: Record<string, number> = {};
+      const eg = parseInt(newEngagementAddonSlots.trim(), 10);
+      if (Number.isFinite(eg) && eg > 0) metadata.engagement_addon_slots = eg;
+      const cr = parseInt(newRecognitionCreditsAdded.trim(), 10);
+      if (Number.isFinite(cr) && cr > 0) metadata.recognition_credits_added = cr;
+
       const { error } = await supabase.schema('crm').from('space_orders').insert({
         space_id: newSpaceId,
         sku_id: newSkuId,
@@ -126,12 +136,15 @@ export default function SpaceOrders({ opsUser, view }: SpaceOrdersProps) {
         expires_at: newExpiresAt ? new Date(newExpiresAt).toISOString() : null,
         source: 'ops_grant',
         created_by_ops_user_id: opsUser.id,
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
       });
       if (!error) {
         setShowNew(false);
         setNewSpaceId('');
         setNewSkuId('');
         setNewExpiresAt('');
+        setNewEngagementAddonSlots('');
+        setNewRecognitionCreditsAdded('');
         load();
       }
     } finally {
@@ -234,6 +247,32 @@ export default function SpaceOrders({ opsUser, view }: SpaceOrdersProps) {
                 type="date"
                 value={newExpiresAt}
                 onChange={(e) => setNewExpiresAt(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: 6 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginBottom: '0.75rem' }}>
+              <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem' }}>
+                增购 engagement 槽位数（可选，写入 metadata.engagement_addon_slots，与 FIRM_ANNUAL 订单配合）
+              </span>
+              <input
+                type="number"
+                min={0}
+                placeholder="例如整包购入的 slot 数"
+                value={newEngagementAddonSlots}
+                onChange={(e) => setNewEngagementAddonSlots(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: 6 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginBottom: '0.75rem' }}>
+              <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem' }}>
+                增加 client 识别 credits（可选，metadata.recognition_credits_added，需 CLIENT_SUB 等客户订单）
+              </span>
+              <input
+                type="number"
+                min={0}
+                placeholder="例如 100"
+                value={newRecognitionCreditsAdded}
+                onChange={(e) => setNewRecognitionCreditsAdded(e.target.value)}
                 style={{ width: '100%', padding: '0.5rem', borderRadius: 6 }}
               />
             </label>

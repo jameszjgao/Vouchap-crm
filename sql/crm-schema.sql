@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS crm.sku_edition (
   quota_period text NOT NULL DEFAULT 'month',  -- 用量统计周期，默认按月
   -- 定价：NULL 表示免费
   price_monthly numeric(10, 2),  -- 月价（美元等），NULL=免费
+  price_yearly numeric(10, 2),  -- 年付标价（USD），可选；与 period_type=year 配套
   currency text NOT NULL DEFAULT 'USD',
   is_trial boolean NOT NULL DEFAULT false,
   sort_order int NOT NULL DEFAULT 0,
@@ -107,7 +108,8 @@ CREATE TABLE IF NOT EXISTS crm.space_orders (
   expires_at timestamptz,        -- 授权到期时间，NULL 表示永久
   created_at timestamptz NOT NULL DEFAULT now(),
   created_by_ops_user_id uuid REFERENCES crm.ops_users(id) ON DELETE SET NULL,
-  source text NOT NULL DEFAULT 'registration'  -- registration | purchase | ops_grant
+  source text NOT NULL DEFAULT 'registration',  -- registration | purchase | ops_grant
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE INDEX IF NOT EXISTS idx_space_orders_space ON crm.space_orders(space_id);

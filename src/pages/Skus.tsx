@@ -12,6 +12,7 @@ interface SkuRow {
   period_type: string;
   quota_period: string;
   price_monthly: number | null;
+  price_yearly: number | null;
   currency: string;
   is_trial: boolean;
   sort_order: number;
@@ -59,7 +60,7 @@ export default function Skus({ tab }: SkusProps) {
     setError(null);
     try {
       if (tab === 'edition') {
-        const edRes = await supabase.schema('crm').from('sku_edition').select('id, code, name, description, feature_modules, data_limits, period_type, quota_period, price_monthly, currency, is_trial, sort_order, created_at, updated_at').order('sort_order', { ascending: true });
+        const edRes = await supabase.schema('crm').from('sku_edition').select('id, code, name, description, feature_modules, data_limits, period_type, quota_period, price_monthly, price_yearly, currency, is_trial, sort_order, created_at, updated_at').order('sort_order', { ascending: true });
         if (edRes.error) setError(edRes.error.message || '请求失败');
         else setEditions(edRes.data ?? []);
       } else {
@@ -158,6 +159,7 @@ export default function Skus({ tab }: SkusProps) {
                   <th>计费周期</th>
                   <th>用量周期</th>
                   <th>月价</th>
+                  <th>年价</th>
                   <th>功能模块</th>
                   <th>数据上限</th>
                   <th>创建时间</th>
@@ -165,7 +167,7 @@ export default function Skus({ tab }: SkusProps) {
               </thead>
               <tbody>
                 {editions.length === 0 && !loading ? (
-                  <tr><td colSpan={9} style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>暂无权益包数据</td></tr>
+                  <tr><td colSpan={10} style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>暂无权益包数据</td></tr>
                 ) : editions.map((row) => (
                   <tr key={row.id}>
                     <td><code>{row.code}</code></td>
@@ -174,6 +176,7 @@ export default function Skus({ tab }: SkusProps) {
                     <td>{row.period_type}</td>
                     <td>{row.quota_period ?? '–'}</td>
                     <td>{row.price_monthly != null ? `${row.currency} ${row.price_monthly}` : '免费'}</td>
+                    <td>{row.price_yearly != null ? `${row.currency} ${row.price_yearly}` : '–'}</td>
                     <td>
                       <small>
                         {Object.entries(row.feature_modules ?? {}).map(([k, v]) => `${MODULE_LABELS[k] ?? k}:${v ? '开' : '关'}`).join(', ') || '–'}
