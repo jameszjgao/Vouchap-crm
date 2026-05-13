@@ -9,8 +9,8 @@
 
 GRANT USAGE ON SCHEMA crm TO authenticated;
 
--- 客户订单：运营可查、可新建
-GRANT SELECT, INSERT ON crm.space_orders TO authenticated;
+-- 客户订单：运营可查、可新建、可改（status / expires_at / metadata 等；以 RLS 为准）
+GRANT SELECT, INSERT, UPDATE ON crm.space_orders TO authenticated;
 
 -- 客户分配：运营可查、可新增/改派/取消
 GRANT SELECT, INSERT, UPDATE, DELETE ON crm.ops_assignments TO authenticated;

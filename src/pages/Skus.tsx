@@ -115,7 +115,11 @@ export default function Skus({ tab }: SkusProps) {
                       <td><code>{row.code}</code></td>
                       <td>{row.name || '–'}</td>
                       <td>{row.units}</td>
-                      <td>{row.currency} {row.price}</td>
+                      <td>
+                        {row.price === 0
+                          ? `${row.currency} 0 (reference / quote)`
+                          : `${row.currency} ${row.price}`}
+                      </td>
                       <td>{row.is_active ? '是' : '否'}</td>
                       <td>{row.sort_order}</td>
                       <td>{row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '–'}</td>
@@ -175,8 +179,10 @@ export default function Skus({ tab }: SkusProps) {
                     <td>{row.is_trial ? '是' : '否'}</td>
                     <td>{row.period_type}</td>
                     <td>{row.quota_period ?? '–'}</td>
-                    <td>{row.price_monthly != null ? `${row.currency} ${row.price_monthly}` : '免费'}</td>
-                    <td>{row.price_yearly != null ? `${row.currency} ${row.price_yearly}` : '–'}</td>
+                    <td>
+                      {row.price_monthly != null ? `${row.currency} ${row.price_monthly}` : '—'}
+                    </td>
+                    <td>{row.price_yearly != null ? `${row.currency} ${row.price_yearly}` : '—'}</td>
                     <td>
                       <small>
                         {Object.entries(row.feature_modules ?? {}).map(([k, v]) => `${MODULE_LABELS[k] ?? k}:${v ? '开' : '关'}`).join(', ') || '–'}

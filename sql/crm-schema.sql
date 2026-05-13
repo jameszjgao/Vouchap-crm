@@ -47,7 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_ops_audit_log_resource ON crm.ops_audit_log(resou
 -- ------------------------------
 CREATE TABLE IF NOT EXISTS crm.sku_edition (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  code text NOT NULL UNIQUE,     -- VCH_TRIAL | VCH_BASIC | VCH_BIZ | VCH_FLOW | VCH_ELITE
+  code text NOT NULL UNIQUE,     -- FIRM_ANNUAL | CLIENT_RECOGNITION_BASE | FIRM_CLIENT_SIGNING_BONUS | ...
   name text NOT NULL,
   description text,
   -- 功能模块：expenses / income / inbound / outbound，布尔开关
@@ -77,7 +77,7 @@ COMMENT ON TABLE crm.sku_edition IS '权益包/SKU 版本：功能模块(expense
 -- ------------------------------
 CREATE TABLE IF NOT EXISTS crm.sku_addon (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  code text NOT NULL UNIQUE,     -- VCH_ADDON_500
+  code text NOT NULL UNIQUE,     -- ENGAGEMENT_CREDITS_REF | CLIENT_RECOGNITION_CREDITS_REF
   name text,
   description text,
   units int NOT NULL,            -- 每多少条为一档，如 100
@@ -165,76 +165,54 @@ CREATE INDEX IF NOT EXISTS idx_referral_relations_referrer ON crm.referral_relat
 COMMENT ON TABLE crm.referral_relations IS '邀请关系：被邀请者 user_id、邀请码 id';
 
 -- ------------------------------
--- 8. SKU 与用量增购初始化（免费试用 + 4 档 VCH 产品 + Data Refill Pack）
--- 试用 VCH_TRIAL：四模块、2 成员、50 凭证/月，有效期 15 天，注册即添加
+-- 8. SKU 初始化（与 sql/crm-sku-seed.sql 一致：Firm 年费 + engagement credit；Client 免费 included + 增购 credit；签约赠送）
 -- ------------------------------
-INSERT INTO crm.sku_edition (code, name, description, feature_modules, data_limits, period_type, quota_period, price_monthly, currency, is_trial, sort_order)
-VALUES
-  (
-    'VCH_TRIAL',
-    'Free Trial',
-    'Free trial. 2 members max. All 4 modules. 50 total vouchers/mo. Valid 15 days. Applied on registration.',
-    '{"expenses": true, "income": true, "inbound": true, "outbound": true}'::jsonb,
-    '{"members": 2, "total_vouchers_per_month": 50, "expenses_per_month": 50, "income_per_month": 50, "inbound_per_month": 50, "outbound_per_month": 50}'::jsonb,
-    'month',
-    'month',
-    NULL,
-    'USD',
-    true,
-    0
-  ),
-  (
-    'VCH_BASIC',
-    'Personal',
-    'Individuals & Families. Free. 2 members | 200 total vouchers/mo. Income & Expenses.',
-    '{"expenses": true, "income": true, "inbound": false, "outbound": false}'::jsonb,
-    '{"members": 2, "total_vouchers_per_month": 200, "expenses_per_month": 200, "income_per_month": 200, "inbound_per_month": 0, "outbound_per_month": 0}'::jsonb,
-    'month',
-    'month',
-    NULL,
-    'USD',
-    true,
-    5
-  ),
-  (
-    'VCH_BIZ',
-    'Business',
-    'Freelancers & Small Teams. $19.99/mo. 20 members | 500 total vouchers/mo. Income & Expenses + Multi-user.',
-    '{"expenses": true, "income": true, "inbound": false, "outbound": false}'::jsonb,
-    '{"members": 20, "total_vouchers_per_month": 500, "expenses_per_month": 500, "income_per_month": 500, "inbound_per_month": 0, "outbound_per_month": 0}'::jsonb,
-    'month',
-    'month',
-    19.99,
-    'USD',
-    false,
-    15
-  ),
-  (
-    'VCH_FLOW',
-    'Smart Flow',
-    'Wholesalers & Trade Agents. $99.99/mo. 5 members | 1,000 total vouchers/mo. AI-Inbound & Outbound.',
-    '{"expenses": false, "income": false, "inbound": true, "outbound": true}'::jsonb,
-    '{"members": 5, "total_vouchers_per_month": 1000, "expenses_per_month": 0, "income_per_month": 0, "inbound_per_month": 1000, "outbound_per_month": 1000}'::jsonb,
-    'month',
-    'month',
-    99.99,
-    'USD',
-    false,
-    25
-  ),
-  (
-    'VCH_ELITE',
-    'Enterprise Pro',
-    'Scale-up Businesses. $199.99/mo. Unlimited members | 2,500 total vouchers/mo. Full Suite + Priority Support.',
-    '{"expenses": true, "income": true, "inbound": true, "outbound": true}'::jsonb,
-    '{"members": 999999, "total_vouchers_per_month": 2500, "expenses_per_month": 2500, "income_per_month": 2500, "inbound_per_month": 2500, "outbound_per_month": 2500}'::jsonb,
-    'month',
-    'month',
-    199.99,
-    'USD',
-    false,
-    35
-  )
+INSERT INTO crm.sku_edition (
+  code, name, description, feature_modules, data_limits, period_type, quota_period,
+  price_monthly, price_yearly, currency, is_trial, sort_order
+)
+VALUES (
+  'CLIENT_RECOGNITION_BASE',
+  'Client recognition (included tier)',
+  'Catalog-only: free included AI recognitions per month for all client spaces.',
+  '{"expenses": true, "income": true, "inbound": true, "outbound": true}'::jsonb,
+  '{"recognition_included_per_month": 10, "billing_role": "client_catalog"}'::jsonb,
+  'forever',
+  'month',
+  NULL,
+  NULL,
+  'USD',
+  false,
+  0
+),
+(
+  'FIRM_CLIENT_SIGNING_BONUS',
+  'Firm–client signing bonus (recognition credits)',
+  'Catalog-only: credits granted to client space on first firm.orders row per (firm, client) pair.',
+  '{"expenses": true, "income": true, "inbound": true, "outbound": true}'::jsonb,
+  '{"recognition_credits_per_signing": 20, "billing_role": "policy"}'::jsonb,
+  'forever',
+  'month',
+  NULL,
+  NULL,
+  'USD',
+  false,
+  5
+),
+(
+  'FIRM_ANNUAL',
+  'Firm Annual',
+  'Annual firm plan. engagement_credits_included = concurrent engagements cap. Top up via metadata.engagement_credits_added.',
+  '{"expenses": true, "income": true, "inbound": true, "outbound": true}'::jsonb,
+  '{"engagement_credits_included": 50, "billing_role": "firm"}'::jsonb,
+  'year',
+  'year',
+  NULL,
+  99.00,
+  'USD',
+  false,
+  40
+)
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
@@ -243,23 +221,34 @@ ON CONFLICT (code) DO UPDATE SET
   period_type = EXCLUDED.period_type,
   quota_period = EXCLUDED.quota_period,
   price_monthly = EXCLUDED.price_monthly,
+  price_yearly = EXCLUDED.price_yearly,
   currency = EXCLUDED.currency,
   is_trial = EXCLUDED.is_trial,
   sort_order = EXCLUDED.sort_order,
   updated_at = now();
 
--- Add-on: Data Refill Pack — $20 / 500 entries
 INSERT INTO crm.sku_addon (code, name, description, units, price, currency, is_active, sort_order)
-VALUES (
-  'VCH_ADDON_500',
-  'Data Refill Pack',
-  '$20.00 / 500 entries.',
-  500,
-  20.00,
-  'USD',
-  true,
-  0
-)
+VALUES
+  (
+    'ENGAGEMENT_CREDITS_REF',
+    'Engagement credits (reference pack)',
+    'Reference listing for engagement credit packs (price 0 = quote in CRM).',
+    10,
+    0,
+    'USD',
+    true,
+    10
+  ),
+  (
+    'CLIENT_RECOGNITION_CREDITS_REF',
+    'Client recognition credits (reference pack)',
+    'Reference listing for client recognition credit packs.',
+    100,
+    0,
+    'USD',
+    true,
+    20
+  )
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,

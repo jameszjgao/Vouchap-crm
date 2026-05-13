@@ -54,7 +54,7 @@ GRANT EXECUTE ON FUNCTION public.ensure_referral_code(uuid) TO authenticated;
 
 
 -- ------------------------------
--- 2. 空间创建时：自动插入试用订单 + 分配给当前唯一运营
+-- 2. 空间创建时：分配给当前唯一运营（不再插入 VCH_TRIAL；计费见 FIRM_ANNUAL / client credits）
 -- 在 public.spaces 上 AFTER INSERT 触发
 -- ------------------------------
 CREATE OR REPLACE FUNCTION crm.on_space_created()
@@ -64,21 +64,8 @@ SECURITY DEFINER
 SET search_path = crm, public
 AS $$
 DECLARE
-  v_sku_id uuid;
   v_ops_id uuid;
-  v_expires_at timestamptz;
 BEGIN
-  -- 试用 SKU（VCH_TRIAL）
-  SELECT id INTO v_sku_id FROM crm.sku_edition WHERE code = 'VCH_TRIAL' LIMIT 1;
-  IF v_sku_id IS NULL THEN
-    RAISE WARNING 'crm.on_space_created: VCH_TRIAL not found, skip trial order';
-  ELSE
-    v_expires_at := now() + interval '15 days';
-    INSERT INTO crm.space_orders (space_id, sku_id, status, started_at, expires_at, source)
-    VALUES (NEW.id, v_sku_id, 'active', now(), v_expires_at, 'registration');
-  END IF;
-
-  -- 分配给「当前唯一」运营人员（created_at 最早的一条）
   SELECT id INTO v_ops_id FROM crm.ops_users ORDER BY created_at ASC LIMIT 1;
   IF v_ops_id IS NOT NULL THEN
     INSERT INTO crm.ops_assignments (ops_user_id, space_id, role)
@@ -92,7 +79,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION crm.on_space_created() IS 'public.spaces 插入后：写 crm.space_orders（试用订单）与 crm.ops_assignments（分配给第一个运营）';
+COMMENT ON FUNCTION crm.on_space_created() IS 'public.spaces 插入后：crm.ops_assignments（分配给第一个运营）；无自动试用订单';
 
 -- 删除旧 trigger 避免重复执行报错
 DROP TRIGGER IF EXISTS crm_after_space_insert ON public.spaces;
