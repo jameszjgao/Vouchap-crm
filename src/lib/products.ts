@@ -2,7 +2,7 @@ export const CRM_PRODUCTS = [
   { id: 'vouchap', name: 'Vouchap' },
   { id: 'portalflow', name: 'Portalflow' },
   { id: 'wholestore', name: 'Wholestore' },
-  { id: 'aimlink', name: 'aim.link' },
+  { id: 'aimlink', name: 'Workmap' },
 ] as const;
 
 export type ProductId = (typeof CRM_PRODUCTS)[number]['id'];

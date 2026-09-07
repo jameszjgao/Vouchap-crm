@@ -121,7 +121,12 @@ export default function SpaceOrders({ opsUser, view }: SpaceOrdersProps) {
           ? supabase.schema('crm').from('ops_assignments').select('tenant_id').eq('product_id', productId).eq('ops_user_id', opsUser.id)
           : Promise.resolve({ data: [] as { tenant_id: string }[], error: null }),
       ]);
-      const ids = new Set(((assignmentsRes.data ?? []) as { tenant_id: string }[]).map((a) => a.tenant_id));
+      const liveIds = new Set(tenants.map((t) => t.id));
+      const ids = new Set(
+        ((assignmentsRes.data ?? []) as { tenant_id: string }[])
+          .map((a) => a.tenant_id)
+          .filter((id) => liveIds.has(id)),
+      );
       setMyTenantIds(ids);
       setSpaces(tenants);
       setSkus(skuRows.filter(skuIsOrderTarget));

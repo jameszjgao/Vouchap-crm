@@ -1,6 +1,6 @@
 # Apply Adaven-CRM Hub (project `glwacznypahmlpwottfz` only)
 
-Do **not** run these files on Vouchap (`giuacjbfsyrristkigmz`), Portalflow, Wholestore, or aim.link.
+Do **not** run these files on Vouchap (`giuacjbfsyrristkigmz`), Portalflow, Wholestore, or Workmap.
 
 ## Project
 
@@ -91,6 +91,8 @@ VITE_SUPABASE_ANON_KEY=<Hub anon public key>
 ```
 
 `npm run dev` → http://localhost:5174
+
+Vercel 构建会把 `VITE_*` **打进前端包**。未配置时生产会白屏。在 Vercel → Environment Variables 为 Production / Preview 添加上述两项后 **Redeploy**。Hub Auth Redirect URLs 需包含 `https://<crm>.vercel.app/**`。
 
 Hub 与 Vouchap 产品登录不是同一套密码。本地改某个运营 Hub 密码：
 

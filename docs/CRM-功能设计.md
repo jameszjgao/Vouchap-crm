@@ -24,12 +24,13 @@
 | `get_entitlements` | `get_space_entitlements` 或 `get_workspace_entitlements` |
 | `get_counts` | 工作台数字 |
 
-UI 类型标签：Vouchap/Portalflow → Firm/Client；Wholestore → Vendor/Dealer；aim.link → Workspace。SQL 不用这些词。
+UI 类型标签：Vouchap/Portalflow → Firm/Client；Wholestore → Vendor/Dealer；Workmap → Workspace。SQL 不用这些词。
 
 ## 3. 页面
 
 - 工作台 / 客户 / 订单 / SKU / 团队：行为与旧版一致，顶栏左侧 **平铺产品按钮** 切换当前产品。
 - 客户列表数据来自适配器；分配与跟进来自 Hub。
+- 「全部客户」= 产品库现有租户；「我的客户 / 客户分配」= 现有租户 ∩ Hub 分配。指向已删空间的分配不计数字，应从 Hub 剔除。
 - 新建订单写入当前产品库，订阅填到期日，credit 包写 metadata。
 
 ## 4. 权限

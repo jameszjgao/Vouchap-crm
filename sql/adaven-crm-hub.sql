@@ -26,7 +26,7 @@ VALUES
   ('vouchap', 'Vouchap', 'space', 10),
   ('portalflow', 'Portalflow', 'space', 20),
   ('wholestore', 'Wholestore', 'space', 30),
-  ('aimlink', 'aim.link', 'workspace', 40)
+  ('aimlink', 'Workmap', 'workspace', 40)
 ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name,
     tenant_model = EXCLUDED.tenant_model,

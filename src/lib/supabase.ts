@@ -1,10 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL ?? '').trim();
+const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim();
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('[Adaven-CRM] Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to the Hub project.');
+export const hubConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+if (!hubConfigured) {
+  console.error('[Adaven-CRM] Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY (required at build time on Vercel).');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(
+  hubConfigured ? supabaseUrl : 'https://glwacznypahmlpwottfz.supabase.co',
+  hubConfigured ? supabaseAnonKey : 'missing-anon-key',
+);

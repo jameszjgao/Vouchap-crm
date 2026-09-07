@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { OpsUser } from '../lib/ops-auth';
 import { useProduct } from '../lib/product-context';
-import { getCounts, listOrders } from '../lib/hub-api';
+import { getCounts, listOrders, listTenants } from '../lib/hub-api';
 import { productName } from '../lib/products';
 import { Users, FileText, Package, UserCheck } from 'lucide-react';
 
@@ -25,17 +25,20 @@ export default function Dashboard({ opsUser, mode }: DashboardProps) {
   async function load() {
     setError(null);
     try {
-      const [counts, assignmentsRes] = await Promise.all([
+      const [counts, tenants, assignmentsRes] = await Promise.all([
         getCounts(productId),
+        listTenants(productId),
         supabase.schema('crm').from('ops_assignments').select('tenant_id, ops_user_id').eq('product_id', productId),
       ]);
-      const assignments = (assignmentsRes.data ?? []) as { tenant_id: string; ops_user_id: string }[];
+      const liveIds = new Set(tenants.map((t) => t.id));
+      const liveAssignments = ((assignmentsRes.data ?? []) as { tenant_id: string; ops_user_id: string }[])
+        .filter((a) => liveIds.has(a.tenant_id));
       if (isPanorama) {
         setStats({
           spaces: counts.tenants,
           orders: counts.orders,
           skus: counts.skus,
-          assignments: assignments.length,
+          assignments: new Set(liveAssignments.map((a) => a.tenant_id)).size,
         });
         return;
       }
@@ -43,7 +46,9 @@ export default function Dashboard({ opsUser, mode }: DashboardProps) {
         setStats({ spaces: 0, orders: 0, skus: counts.skus, assignments: 0 });
         return;
       }
-      const myTenantIds = new Set(assignments.filter((a) => a.ops_user_id === opsUser.id).map((a) => a.tenant_id));
+      const myTenantIds = new Set(
+        liveAssignments.filter((a) => a.ops_user_id === opsUser.id).map((a) => a.tenant_id),
+      );
       const orders = myTenantIds.size > 0 ? await listOrders(productId) : [];
       setStats({
         spaces: myTenantIds.size,
@@ -98,8 +103,8 @@ export default function Dashboard({ opsUser, mode }: DashboardProps) {
       <div className="page-card" style={{ marginTop: '1rem' }}>
         <h3>说明</h3>
         <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#64748b', fontSize: '0.9rem' }}>
-          <li>顶栏产品筛选决定当前查看的客户库（Vouchap / Portalflow / Wholestore / aim.link）。</li>
-          <li>{isPanorama ? '全部客户' : '我的客户'}：{isPanorama ? '查看该产品全部租户，可分配负责人' : '仅展示分配给我的客户'}</li>
+          <li>顶栏产品筛选决定当前查看的客户库（Vouchap / Portalflow / Wholestore / Workmap）。</li>
+          <li>{isPanorama ? '全部客户' : '我的客户'}：{isPanorama ? '查看该产品全部租户，可分配负责人' : '仅展示仍存在、且分配给我的客户'}</li>
           <li>订单与 SKU 写在各产品库；分配与跟进写在 Adaven-CRM Hub。</li>
         </ul>
       </div>

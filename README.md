@@ -7,7 +7,7 @@
 | Vouchap（冻结） | `public.spaces`（`firm`/`client`） | 现有 `crm.space_orders` | `giuacjbfsyrristkigmz`（不改 schema） |
 | Portalflow | `public.spaces`（`provider`/`consumer`） | 现有 `crm.space_orders` | `xvqlqvtfogxkfeillvig` |
 | Wholestore | `public.spaces`（`provider`/`consumer`） | 新增 `crm.*` | `foyecolycmxcneflpant` |
-| aim.link | `public.workspaces` | `crm.workspace_orders` | 见 aim.link-v2 |
+| Workmap | `public.workspaces` | `crm.workspace_orders` | 见 [Workmap](https://github.com/jamesgao27/Workmap) |
 
 前端 **只配置 Hub** 的 `VITE_SUPABASE_*`。各产品 **service role** 只放在 Hub Function secrets 或 Hub 表 `crm.product_adapters`（仅 service_role 可读），禁止写入 Vite 环境变量。
 

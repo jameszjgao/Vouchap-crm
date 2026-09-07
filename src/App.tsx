@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { supabase } from './lib/supabase';
+import { supabase, hubConfigured } from './lib/supabase';
 import { getCurrentOpsUser, signOut, OpsUser } from './lib/ops-auth';
 import { getMyMenuPermissions, getDefaultMenuPermissions, MENU_KEYS, CRM_REFRESH_MENU_EVENT, type MenuKey } from './lib/menu-permissions';
 import { MenuPermissionsProvider } from './lib/menu-context';
@@ -120,6 +120,17 @@ function App() {
     setOpsUser(null);
     setMenuAllowed(new Set());
   };
+
+  if (!hubConfigured) {
+    return (
+      <div className="loading-container">
+        <p style={{ color: '#b91c1c', maxWidth: 420, textAlign: 'center', lineHeight: 1.5 }}>
+          生产构建缺少 Hub 环境变量 <code>VITE_SUPABASE_URL</code> / <code>VITE_SUPABASE_ANON_KEY</code>。
+          请在 Vercel Project Settings → Environment Variables 中配置后重新部署。
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
