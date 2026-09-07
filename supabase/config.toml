@@ -1,0 +1,24 @@
+# Adaven-CRM Hub — local / linked project config.
+# Create a NEW Supabase project (do not reuse Vouchap / Portalflow / Wholestore / aim.link).
+
+project_id = "glwacznypahmlpwottfz"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "crm"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[functions.sync-crm-role]
+verify_jwt = false
+
+[functions.product-ops]
+verify_jwt = false
+
+[functions.ops-auth]
+verify_jwt = false

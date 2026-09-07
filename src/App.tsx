@@ -4,9 +4,11 @@ import { supabase } from './lib/supabase';
 import { getCurrentOpsUser, signOut, OpsUser } from './lib/ops-auth';
 import { getMyMenuPermissions, getDefaultMenuPermissions, MENU_KEYS, CRM_REFRESH_MENU_EVENT, type MenuKey } from './lib/menu-permissions';
 import { MenuPermissionsProvider } from './lib/menu-context';
+import { ProductProvider } from './lib/product-context';
 import './App.css';
 
 const Login = lazy(() => import('./pages/Login'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Skus = lazy(() => import('./pages/Skus'));
 const SpaceOrders = lazy(() => import('./pages/SpaceOrders'));
@@ -32,6 +34,9 @@ function DefaultRedirect({ allowed }: { allowed: Set<MenuKey> }) {
 
 function App() {
   const [session, setSession] = useState<unknown>(null);
+  const [recovery, setRecovery] = useState(() => (
+    typeof window !== 'undefined' && window.location.hash.includes('type=recovery')
+  ));
   const [opsUser, setOpsUser] = useState<OpsUser | null>(null);
   const [menuAllowed, setMenuAllowed] = useState<Set<MenuKey>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -83,8 +88,9 @@ function App() {
 
     init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       if (!mounted) return;
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true);
       setSession(s ?? null);
       if (!s?.user) {
         setOpsUser(null);
@@ -135,8 +141,11 @@ function App() {
             </div>
           }
         >
-          {session && opsUser ? (
+          {recovery ? (
+            <ResetPassword onDone={() => { setRecovery(false); window.location.replace('/'); }} />
+          ) : session && opsUser ? (
             <MenuPermissionsProvider allowed={menuAllowed}>
+              <ProductProvider>
               <div className="crm-layout">
                 <Sidebar opsUser={opsUser} onSignOut={handleSignOut} />
                 <div className="crm-main">
@@ -154,15 +163,18 @@ function App() {
                       <Route path="/sku/addon" element={<Skus tab="addon" />} />
                       <Route path="/team/members" element={<OpsUsers />} />
                       <Route path="/team/roles" element={<RolePermissions />} />
+                      <Route path="/reset-password" element={<ResetPassword onDone={() => window.location.replace('/')} />} />
                       <Route path="*" element={<DefaultRedirect allowed={menuAllowed} />} />
                     </Routes>
                   </div>
                 </div>
               </div>
+              </ProductProvider>
             </MenuPermissionsProvider>
           ) : (
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           )}

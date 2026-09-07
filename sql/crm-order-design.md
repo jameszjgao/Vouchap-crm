@@ -13,6 +13,20 @@
 
 订单通过 `sku_id` 关联 `crm.sku_edition`，SKU 版本定义功能模块、成员上限、周期用量与定价。
 
+### 2.0 平台 `sku_edition.code` 白名单（与 `vouchap-app/supabase/migrations/20260515110000_crm_prune_legacy_sku_catalog.sql` 一致）
+
+| code | 用途 |
+|------|------|
+| `CLIENT_RECOGNITION_BASE` | 目录策略（非订单目标） |
+| `FIRM_CLIENT_SIGNING_BONUS` | 目录策略（非订单目标） |
+| `FIRM_ANNUAL` | Firm 在服年订 |
+| `CLIENT_TRIAL_30` / `FIRM_TRIAL_30` | 注册 30 天试用 |
+| `CLIENT_PAID_MONTHLY` | Client 在服月订 |
+| `RECOGNITION_CREDIT_PACK` | Client 永久识别 credit 包 |
+| `ENGAGEMENT_CREDIT_PACK` | Firm 永久 engagement 增购包 |
+
+已废弃并从库中清理的示例：`VCH_*`、`CLIENT_SUB` 及未列入上表且**无任何** `space_orders` 引用的实验行。若需长期保留自定义 code，须至少有一条订单引用，或改迁移中的白名单后再 `db push`。
+
 ### 2.1 功能模块（feature_modules）
 
 约定客户空间可用的模块，键与含义：

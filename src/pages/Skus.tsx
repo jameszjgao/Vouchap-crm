@@ -1,44 +1,17 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
-
-interface SkuRow {
-  id: string;
-  code: string;
-  name: string;
-  description: string | null;
-  feature_modules: Record<string, boolean>;
-  data_limits: Record<string, number>;
-  period_type: string;
-  quota_period: string;
-  price_monthly: number | null;
-  price_yearly: number | null;
-  currency: string;
-  is_trial: boolean;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface AddonRow {
-  id: string;
-  code: string;
-  name: string | null;
-  description: string | null;
-  units: number;
-  price: number;
-  currency: string;
-  is_active: boolean;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
-}
+import { useProduct } from '../lib/product-context';
+import { listAddons, listSkus, type HubAddon, type HubSku } from '../lib/hub-api';
+import { productName } from '../lib/products';
 
 const MODULE_LABELS: Record<string, string> = {
   expenses: '支出',
   income: '收入',
   inbound: '入库',
   outbound: '出库',
+  projects: '项目',
+  workmap: 'Work Map',
+  workmap_ai: 'Work Map AI',
 };
 
 interface SkusProps {
@@ -46,27 +19,24 @@ interface SkusProps {
 }
 
 export default function Skus({ tab }: SkusProps) {
-  const [editions, setEditions] = useState<SkuRow[]>([]);
-  const [addons, setAddons] = useState<AddonRow[]>([]);
+  const { productId } = useProduct();
+  const [editions, setEditions] = useState<HubSku[]>([]);
+  const [addons, setAddons] = useState<HubAddon[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     load();
-  }, [tab]);
+  }, [tab, productId]);
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
       if (tab === 'edition') {
-        const edRes = await supabase.schema('crm').from('sku_edition').select('id, code, name, description, feature_modules, data_limits, period_type, quota_period, price_monthly, price_yearly, currency, is_trial, sort_order, created_at, updated_at').order('sort_order', { ascending: true });
-        if (edRes.error) setError(edRes.error.message || '请求失败');
-        else setEditions(edRes.data ?? []);
+        setEditions(await listSkus(productId));
       } else {
-        const addonRes = await supabase.schema('crm').from('sku_addon').select('id, code, name, description, units, price, currency, is_active, sort_order, created_at, updated_at').order('sort_order', { ascending: true });
-        if (addonRes.error) setError(addonRes.error.message || '请求失败');
-        else setAddons(addonRes.data ?? []);
+        setAddons(await listAddons(productId));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败');
@@ -78,17 +48,14 @@ export default function Skus({ tab }: SkusProps) {
   if (tab === 'addon') {
     return (
       <div>
-        <h1 style={{ margin: '0 0 1rem', fontSize: '1.35rem' }}>增购规格</h1>
+        <h1 style={{ margin: '0 0 1rem', fontSize: '1.35rem' }}>增购规格 · {productName(productId)}</h1>
         <div className="page-card">
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', color: '#64748b' }}>
-            每 N 条数据为一档的增购价格，用于超量购买。
+            每 N 条数据为一档的增购价格，来自当前产品库。
           </p>
           {error && (
             <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fef2f2', color: '#b91c1c', borderRadius: 6 }}>
               <strong>加载失败：</strong> {error}
-              <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem' }}>
-                请确认 Supabase API 的 Exposed schemas 包含 <code>crm</code>，并已执行 <code>sql/crm-grant-orders-assignments.sql</code>。
-              </p>
             </div>
           )}
           <div className="table-wrap">
@@ -136,18 +103,15 @@ export default function Skus({ tab }: SkusProps) {
 
   return (
     <div>
-      <h1 style={{ margin: '0 0 1rem', fontSize: '1.35rem' }}>版本规格</h1>
+      <h1 style={{ margin: '0 0 1rem', fontSize: '1.35rem' }}>版本规格 · {productName(productId)}</h1>
       <div className="page-card">
         <h3 style={{ margin: '0 0 0.5rem' }}>版本 (sku_edition)</h3>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', color: '#64748b' }}>
-          功能模块与周期内数据量上限，供客户订单使用。
+          功能模块与周期内数据量上限，供该产品客户订单使用。
         </p>
         {error && (
           <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fef2f2', color: '#b91c1c', borderRadius: 6 }}>
             <strong>加载失败：</strong> {error}
-            <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem' }}>
-              请确认 Supabase API 的 Exposed schemas 包含 <code>crm</code>，并已执行 <code>sql/crm-grant-orders-assignments.sql</code>。
-            </p>
           </div>
         )}
         <div className="table-wrap">
@@ -190,7 +154,7 @@ export default function Skus({ tab }: SkusProps) {
                     </td>
                     <td>
                       <small>
-                        {Object.entries(row.data_limits ?? {}).map(([k, v]) => `${k}:${v}`).join(', ') || '–'}
+                        {Object.entries(row.data_limits ?? {}).map(([k, v]) => `${k}:${typeof v === 'object' ? JSON.stringify(v) : String(v)}`).join(', ') || '–'}
                       </small>
                     </td>
                     <td>{format(new Date(row.created_at), 'yyyy-MM-dd HH:mm')}</td>

@@ -29,7 +29,7 @@ export default function Sidebar({ opsUser, onSignOut }: SidebarProps) {
   return (
     <aside className="crm-sidebar">
       <div className="sidebar-brand">
-        <span className="sidebar-brand-name">Vouchap</span>
+        <span className="sidebar-brand-name">Adaven</span>
         <span className="sidebar-brand-badge">CRM</span>
       </div>
       <nav className="sidebar-nav">

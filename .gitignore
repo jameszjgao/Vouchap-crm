@@ -3,6 +3,7 @@ dist
 .env
 .env.local
 *.local
+.local/
 supabase/.temp
 test_permission
 .vercel
